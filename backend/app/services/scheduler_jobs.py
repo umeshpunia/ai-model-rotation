@@ -70,7 +70,7 @@ def stats_aggregation_job(session: Session) -> None:
         sa_select(
             cast(Any, RequestLog.provider_id),
             cast(Any, RequestLog.model),
-            cast(Any, func.count(RequestLog.id).label("req_count")),
+            cast(Any, func.count(cast(Any, RequestLog.id)).label("req_count")),
             cast(Any, func.sum(cast(Any, RequestLog.success == True)).label("succ_count")),
             cast(Any, func.avg(RequestLog.latency_ms).label("avg_latency")),
             cast(Any, func.max(RequestLog.latency_ms).label("max_latency")),
@@ -83,7 +83,7 @@ def stats_aggregation_job(session: Session) -> None:
         .group_by(cast(Any, RequestLog.provider_id), cast(Any, RequestLog.model))
     )
     
-    aggregations = session.exec(stmt).all()
+    aggregations = session.execute(stmt).all()
     for row in aggregations:
         provider_id, model_name, req_count, succ_count, avg_latency, max_latency, cost_sum, prompt_tok, comp_tok, tot_tok = row
         if not provider_id:
