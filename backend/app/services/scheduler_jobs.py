@@ -68,19 +68,19 @@ def stats_aggregation_job(session: Session) -> None:
     
     stmt = (
         sa_select(
-            RequestLog.provider_id,
-            RequestLog.model,
-            func.count(RequestLog.id).label("req_count"),
-            func.sum(cast(Any, RequestLog.success == True)).label("succ_count"),
-            func.avg(RequestLog.latency_ms).label("avg_latency"),
-            func.max(RequestLog.latency_ms).label("max_latency"),
-            func.sum(RequestLog.cost).label("cost_sum"),
-            func.sum(RequestLog.prompt_tokens).label("prompt_tok"),
-            func.sum(RequestLog.completion_tokens).label("comp_tok"),
-            func.sum(RequestLog.total_tokens).label("tot_tok")
+            cast(Any, RequestLog.provider_id),
+            cast(Any, RequestLog.model),
+            cast(Any, func.count(RequestLog.id).label("req_count")),
+            cast(Any, func.sum(cast(Any, RequestLog.success == True)).label("succ_count")),
+            cast(Any, func.avg(RequestLog.latency_ms).label("avg_latency")),
+            cast(Any, func.max(RequestLog.latency_ms).label("max_latency")),
+            cast(Any, func.sum(RequestLog.cost).label("cost_sum")),
+            cast(Any, func.sum(RequestLog.prompt_tokens).label("prompt_tok")),
+            cast(Any, func.sum(RequestLog.completion_tokens).label("comp_tok")),
+            cast(Any, func.sum(RequestLog.total_tokens).label("tot_tok"))
         )
         .where(cast(Any, RequestLog.created_at >= start_interval))
-        .group_by(RequestLog.provider_id, RequestLog.model)
+        .group_by(cast(Any, RequestLog.provider_id), cast(Any, RequestLog.model))
     )
     
     aggregations = session.exec(stmt).all()
