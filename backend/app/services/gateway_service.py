@@ -1,7 +1,7 @@
 import time
 from datetime import datetime, timezone, timedelta
 from typing import AsyncGenerator
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 
 from app.domain.entities.api_key import ApiKey
 from app.domain.entities.request_log import RequestLog
@@ -61,6 +61,7 @@ class GatewayService:
             start_time = time.perf_counter()
             try:
                 # Decrypt raw credential
+                assert key.id is not None
                 raw_key = self.api_key_service.reveal_key(key.id)
                 plugin = self.api_key_service.plugin_manager.get_plugin(provider.plugin)
                 
