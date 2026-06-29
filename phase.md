@@ -103,25 +103,25 @@
  
  ## Phase 5: API Key Management
  
- - [ ] API Key CRUD service
-   - [ ] Add key with encryption at rest
-   - [ ] Edit key
-   - [ ] Delete key
-   - [ ] Enable/disable key
-   - [ ] Test key (live validation)
-   - [ ] Manual rotate key
-   - [ ] Copy key (with masking)
-   - [ ] Hide/reveal in UI
- - [ ] Key status tracking
-   - [ ] Healthy
-   - [ ] Cooldown
-   - [ ] Disabled
-   - [ ] Invalid
-   - [ ] Expired
-   - [ ] Quota Reached
-   - [ ] Unknown
- - [ ] Key usage statistics tracking
- - [ ] Key priority management
+ - [x] API Key CRUD service
+   - [x] Add key with encryption at rest
+   - [x] Edit key
+   - [x] Delete key
+   - [x] Enable/disable key
+   - [x] Test key (live validation)
+   - [x] Manual rotate key
+   - [x] Copy key (with masking)
+   - [x] Hide/reveal in UI
+ - [x] Key status tracking
+   - [x] Healthy
+   - [x] Cooldown
+   - [x] Disabled
+   - [x] Invalid
+   - [x] Expired
+   - [x] Quota Reached
+   - [x] Unknown
+ - [x] Key usage statistics tracking
+ - [x] Key priority management
  
  ## Phase 6: Intelligent Routing & Failover
  
@@ -352,7 +352,7 @@
  | 2 | Core Infrastructure | Complete |
  | 3 | Data Layer | Complete |
  | 4 | Provider Plugin System | Complete |
- | 5 | API Key Management | Not Started |
+ | 5 | API Key Management | Complete |
  | 6 | Intelligent Routing & Failover | Not Started |
  | 7 | Background Services & Health Monitoring | Not Started |
  | 8 | REST API | Not Started |
