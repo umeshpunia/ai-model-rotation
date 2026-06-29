@@ -28,7 +28,7 @@ def list_statistics(
 ) -> list[Statistic]:
     """Retrieve time-window aggregated statistics history."""
     repo = StatisticRepository(session)
-    filters = {}
+    filters: dict[str, Any] = {}
     if provider_id is not None:
         filters["provider_id"] = provider_id
     if model is not None:

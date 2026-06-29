@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, select
 
 from app.main import app
 from app.core.database import session_scope, get_settings, dispose_engine
@@ -14,33 +14,38 @@ import os
 def client_fixture():
     # Use isolated local SQLite database file for thread-safe API tests
     settings = get_settings()
-    original_url = settings.database.database_test_url
+    original_url = settings.database.database_url
+    original_test_url = settings.database.database_test_url
     db_file = "test_api.db"
+    settings.database.database_url = f"sqlite:///{db_file}"
     settings.database.database_test_url = f"sqlite:///{db_file}"
     dispose_engine()
     
     from app.core.database import get_engine
     SQLModel.metadata.create_all(get_engine())
     
-    # Run database admin seed
+    # Idempotent seeding to guarantee user existence
     with session_scope() as session:
-        admin_user = User(
-            username="admin",
-            email="[email protected]",
-            full_name="Default Administrator",
-            hashed_password=hash_password("admin123"),
-            role=UserRole.ADMIN,
-            is_active=True,
-            is_superuser=True
-        )
-        session.add(admin_user)
-        session.commit()
-        
+        existing = session.exec(select(User).where(User.username == "admin")).first()
+        if not existing:
+            admin_user = User(
+                username="admin",
+                email="[email protected]",
+                full_name="Default Administrator",
+                hashed_password=hash_password("admin123"),
+                role=UserRole.ADMIN,
+                is_active=True,
+                is_superuser=True
+            )
+            session.add(admin_user)
+            session.commit()
+            
     client = TestClient(app)
     yield client
     
     SQLModel.metadata.drop_all(get_engine())
-    settings.database.database_test_url = original_url
+    settings.database.database_url = original_url
+    settings.database.database_test_url = original_test_url
     dispose_engine()
     
     # Clean up file

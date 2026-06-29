@@ -106,4 +106,4 @@ def delete_model(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Model with id {id} not found."
         )
-    repo.delete(id)
+    repo.delete(model)

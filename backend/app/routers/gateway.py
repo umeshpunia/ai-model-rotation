@@ -57,7 +57,7 @@ async def chat_completions(
     if request.stream:
         async def stream_generator() -> AsyncGenerator[str, None]:
             try:
-                generator = await gateway_service.execute_stream_chat(request, mode)
+                generator = gateway_service.execute_stream_chat(request, mode)
                 async for chunk in generator:
                     yield f"data: {chunk.model_dump_json(exclude_none=True)}\n\n"
                 yield "data: [DONE]\n\n"

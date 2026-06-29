@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
-from typing import Any
+from typing import Any, cast
 
 from app.core.database import get_db
 from app.domain.entities.request_log import RequestLog
@@ -23,11 +23,11 @@ def list_logs(
 ) -> list[RequestLog]:
     """Retrieve all request log audit entries with pagination."""
     repo = RequestLogRepository(session)
-    filters = {}
+    filters: dict[str, Any] = {}
     if provider_id is not None:
         filters["provider_id"] = provider_id
     if success is not None:
         filters["success"] = success
         
     # Sort logs descending by created_at (most recent first)
-    return repo.list(filters=filters, order_by=RequestLog.created_at.desc(), limit=limit, offset=skip)
+    return repo.list(filters=filters, order_by=cast(Any, RequestLog.created_at).desc(), limit=limit, offset=skip)
