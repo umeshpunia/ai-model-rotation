@@ -7,6 +7,8 @@ from typing import Any, AsyncGenerator
 from app.core.database import get_db
 from app.core.exceptions import ProviderUnavailableError
 from app.domain.enums import RoutingMode
+from app.domain.entities.provider import Provider
+from app.domain.entities.model import Model
 from app.repositories.setting_repository import SettingRepository
 from app.schemas.gateway import (
     ChatCompletionRequest,
@@ -153,3 +155,95 @@ async def generate_images(
             continue
             
     raise HTTPException(status_code=503, detail="Image generation service unavailable.")
+
+@router.post("/chat")
+async def chat_legacy_alias(
+    request: ChatCompletionRequest,
+    x_routing_strategy: str | None = Header(default=None, alias="X-Routing-Strategy"),
+    session: Session = Depends(get_db)
+) -> Any:
+    """Legacy/simple chat completions alias path."""
+    request.stream = False
+    return await chat_completions(request, x_routing_strategy, session)
+
+@router.post("/stream")
+async def chat_stream_legacy_alias(
+    request: ChatCompletionRequest,
+    x_routing_strategy: str | None = Header(default=None, alias="X-Routing-Strategy"),
+    session: Session = Depends(get_db)
+) -> Any:
+    """Legacy/simple streaming chat completions alias path."""
+    request.stream = True
+    return await chat_completions(request, x_routing_strategy, session)
+
+@router.post("/image", response_model=ImageGenerationResponse)
+async def generate_images_legacy_alias(
+    request: ImageGenerationRequest,
+    session: Session = Depends(get_db)
+) -> ImageGenerationResponse:
+    """Legacy/simple image generation alias path."""
+    return await generate_images(request, session)
+
+@router.post("/embedding", response_model=EmbeddingResponse)
+async def create_embeddings_legacy_alias(
+    request: EmbeddingRequest,
+    session: Session = Depends(get_db)
+) -> EmbeddingResponse:
+    """Legacy/simple embedding generation alias path."""
+    return await create_embeddings(request, session)
+
+@router.get("/providers", response_model=list[Any])
+def list_gateway_providers(session: Session = Depends(get_db)) -> list[Any]:
+    """List active providers under gateway namespace."""
+    repo = ProviderRepository(session)
+    return repo.list(order_by=Provider.priority.asc())
+
+@router.get("/models", response_model=list[Any])
+def list_gateway_models(session: Session = Depends(get_db)) -> list[Any]:
+    """List configured models under gateway namespace."""
+    from app.repositories.model_repository import ModelRepository
+    repo = ModelRepository(session)
+    return repo.list()
+
+@router.get("/status")
+def gateway_status(session: Session = Depends(get_db)) -> dict[str, Any]:
+    """Get dynamic status of keys and providers under gateway namespace."""
+    from app.domain.enums import KeyStatus
+    prov_repo = ProviderRepository(session)
+    key_repo = ApiKeyRepository(session)
+    providers = prov_repo.list()
+    keys = key_repo.list()
+    return {
+        "status": "online",
+        "providers": {
+            "total": len(providers),
+            "enabled": sum(1 for p in providers if p.is_enabled)
+        },
+        "api_keys": {
+            "total": len(keys),
+            "healthy": sum(1 for k in keys if k.status == KeyStatus.HEALTHY),
+            "cooldown": sum(1 for k in keys if k.status == KeyStatus.COOLDOWN),
+            "invalid": sum(1 for k in keys if k.status == KeyStatus.INVALID),
+            "disabled": sum(1 for k in keys if not k.is_enabled)
+        }
+    }
+
+@router.get("/health")
+def gateway_health(session: Session = Depends(get_db)) -> dict[str, str]:
+    """Check connectivity and state under gateway namespace."""
+    from sqlmodel import select
+    try:
+        session.exec(select(1)).first()
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connection failed: {str(e)}"
+        )
+
+@router.get("/statistics", response_model=list[Any])
+def gateway_statistics(session: Session = Depends(get_db)) -> list[Any]:
+    """Get usage statistics under gateway namespace."""
+    from app.repositories.statistic_repository import StatisticRepository
+    repo = StatisticRepository(session)
+    return repo.list()
