@@ -5,10 +5,11 @@ from sqlmodel import Session
 
 from app.domain.entities.api_key import ApiKey
 from app.domain.entities.request_log import RequestLog
-from app.domain.enums import RoutingMode, KeyStatus, HealthStatus
+from app.domain.enums import RoutingMode, KeyStatus, HealthStatus, NotificationSeverity
 from app.schemas.gateway import ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChunk
 from app.services.routing_engine import RoutingEngine
 from app.services.api_key_service import ApiKeyService
+from app.services.notifications import get_notification_dispatcher
 from app.core.exceptions import UpstreamError, ProviderUnavailableError
 from app.core.logging import get_logger
 
@@ -109,6 +110,14 @@ class GatewayService:
                 self._handle_rotation_rules(key, 500, str(exc))
                 self._log_request(provider.id, key.id, request.model, False, 500, latency_ms, str(exc))
 
+        get_notification_dispatcher().notify(
+            self.session,
+            NotificationSeverity.CRITICAL,
+            "provider.all_unavailable",
+            "All Providers Offline",
+            f"All configured provider candidates for model '{request.model}' were exhausted without success.",
+            {"model": request.model}
+        )
         raise ProviderUnavailableError("All provider connection candidates were exhausted without success.")
 
     def _handle_rotation_rules(self, key: ApiKey, status_code: int, error_msg: str) -> None:
@@ -124,15 +133,57 @@ class GatewayService:
             key.status = KeyStatus.INVALID
             key.health_status = HealthStatus.UNHEALTHY
             key.is_enabled = False
+            
+            get_notification_dispatcher().notify(
+                self.session,
+                NotificationSeverity.ERROR,
+                "key.disabled",
+                "API Key Disabled",
+                f"API key '{key.key_hint}' for provider ID {key.provider_id} was disabled due to authentication failure ({status_code}).",
+                {"api_key_id": key.id, "provider_id": key.provider_id}
+            )
         elif status_code == 429:
             # Rate limit -> put key on cooldown for 60 seconds
             key.status = KeyStatus.COOLDOWN
             key.health_status = HealthStatus.DEGRADED
             key.cooldown_until = datetime.now(timezone.utc) + timedelta(seconds=60)
+            
+            get_notification_dispatcher().notify(
+                self.session,
+                NotificationSeverity.WARNING,
+                "key.quota_reached",
+                "API Key Rate Limited",
+                f"API key '{key.key_hint}' for provider ID {key.provider_id} hit rate limit (429). Put on 60s cooldown.",
+                {"api_key_id": key.id, "provider_id": key.provider_id}
+            )
         else:
             # Generic 500 or timeout error -> temporary degraded health state
             key.status = KeyStatus.UNKNOWN
             key.health_status = HealthStatus.DEGRADED
+            
+            # Send notification about key degradation / unknown error
+            get_notification_dispatcher().notify(
+                self.session,
+                NotificationSeverity.WARNING,
+                "key.invalid",
+                "API Key Degraded",
+                f"API key '{key.key_hint}' for provider ID {key.provider_id} encountered error: {error_msg}.",
+                {"api_key_id": key.id, "provider_id": key.provider_id, "error": error_msg}
+            )
+
+        # Check if provider is now completely offline
+        from app.repositories.api_key_repository import ApiKeyRepository
+        key_repo = ApiKeyRepository(self.session)
+        active_keys = [k for k in key_repo.list() if k.provider_id == key.provider_id and k.is_enabled and k.status == KeyStatus.HEALTHY and k.id != key.id]
+        if not active_keys:
+            get_notification_dispatcher().notify(
+                self.session,
+                NotificationSeverity.CRITICAL,
+                "provider.offline",
+                "Provider Offline",
+                f"Provider ID {key.provider_id} is offline: no healthy API keys remaining.",
+                {"provider_id": key.provider_id}
+            )
             
         self.session.add(key)
         self.session.flush()
@@ -145,6 +196,14 @@ class GatewayService:
     ) -> AsyncGenerator[ChatCompletionChunk, None]:
         candidates = self.routing_engine.select_candidates(request.model, mode, task_type)
         if not candidates:
+            get_notification_dispatcher().notify(
+                self.session,
+                NotificationSeverity.CRITICAL,
+                "provider.all_unavailable",
+                "All Providers Offline",
+                f"No usable providers or API keys available for model '{request.model}'.",
+                {"model": request.model}
+            )
             raise ProviderUnavailableError("No usable providers or API keys available for this model.")
 
         for provider, key, model_info in candidates:
@@ -184,4 +243,12 @@ class GatewayService:
                 self._handle_rotation_rules(key, 500, str(exc))
                 self._log_request(provider.id, key.id, request.model, False, 500, latency_ms, str(exc))
 
+        get_notification_dispatcher().notify(
+            self.session,
+            NotificationSeverity.CRITICAL,
+            "provider.all_unavailable",
+            "All Providers Offline",
+            f"All configured provider candidates for model '{request.model}' were exhausted without success.",
+            {"model": request.model}
+        )
         raise ProviderUnavailableError("All provider connection candidates were exhausted without success.")

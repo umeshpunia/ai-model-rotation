@@ -13,8 +13,9 @@ from app.domain.entities.request_log import RequestLog
 from app.domain.entities.health_log import HealthLog
 from app.domain.entities.statistic import Statistic
 from app.domain.entities.notification import Notification
-from app.domain.enums import KeyStatus, HealthStatus, StatisticWindow
+from app.domain.enums import KeyStatus, HealthStatus, StatisticWindow, NotificationSeverity
 from app.services.api_key_service import ApiKeyService
+from app.services.notifications import get_notification_dispatcher
 from app.core.logging import get_logger
 
 _logger = get_logger("scheduler")
@@ -52,7 +53,29 @@ async def health_check_job(session: Session) -> None:
         try:
             assert key.id is not None
             _logger.info("job.health_check.testing_key", key_id=key.id, key_name=key.name)
+            old_status = key.status
             await api_key_service.test_key(key.id)
+            session.refresh(key)
+            new_status = key.status
+            
+            if old_status != KeyStatus.HEALTHY and new_status == KeyStatus.HEALTHY:
+                get_notification_dispatcher().notify(
+                    session,
+                    NotificationSeverity.INFO,
+                    "provider.recovered",
+                    "Provider Recovered",
+                    f"API key '{key.key_hint}' for provider ID {key.provider_id} recovered to healthy status.",
+                    {"api_key_id": key.id, "provider_id": key.provider_id}
+                )
+            elif old_status != KeyStatus.INVALID and new_status == KeyStatus.INVALID:
+                get_notification_dispatcher().notify(
+                    session,
+                    NotificationSeverity.ERROR,
+                    "key.invalid",
+                    "API Key Invalidated",
+                    f"API key '{key.key_hint}' for provider ID {key.provider_id} failed health check. Marked invalid.",
+                    {"api_key_id": key.id, "provider_id": key.provider_id, "error": key.last_error}
+                )
         except Exception as e:
             assert key.id is not None
             _logger.error("job.health_check.test_failed", key_id=key.id, error=str(e))
