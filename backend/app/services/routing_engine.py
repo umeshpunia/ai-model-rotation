@@ -1,7 +1,6 @@
 import random
-from typing import List, Tuple, Any
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from typing import List, Tuple, Any, cast
+from sqlmodel import Session, select
 
 from app.domain.entities.provider import Provider
 from app.domain.entities.api_key import ApiKey
@@ -25,8 +24,8 @@ class RoutingEngine:
         # Query matching enabled models
         stmt = (
             select(Model, Provider, ApiKey)
-            .join(Provider, Model.provider_id == Provider.id)
-            .join(ApiKey, ApiKey.provider_id == Provider.id)
+            .join(Provider, cast(Any, Model.provider_id == Provider.id))
+            .join(ApiKey, cast(Any, ApiKey.provider_id == Provider.id))
             .where(Model.name == model_name)
             .where(Model.is_enabled == True)
             .where(Provider.is_enabled == True)
