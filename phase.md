@@ -54,34 +54,34 @@
  
  ## Phase 3: Data Layer
  
- - [ ] Database models / entities
-   - [ ] `Provider` model
-   - [ ] `ApiKey` model
-   - [ ] `Model` model
-   - [ ] `RequestLog` model
-   - [ ] `HealthLog` model
-   - [ ] `Setting` model
-   - [ ] `Statistic` model
-   - [ ] `Notification` model
-   - [ ] `Backup` model
-   - [ ] `User` model (admin/user/viewer roles)
- - [ ] Alembic migrations
-   - [ ] Initial migration generation
-   - [ ] Migration scripts for all tables
- - [ ] Repository pattern implementation
-   - [ ] Base repository with CRUD
-   - [ ] `ProviderRepository`
-   - [ ] `ApiKeyRepository`
-   - [ ] `RequestLogRepository`
-   - [ ] `HealthLogRepository`
-   - [ ] `SettingRepository`
-   - [ ] `StatisticRepository`
-   - [ ] `NotificationRepository`
-   - [ ] `UserRepository`
- - [ ] Pydantic schemas (`app/schemas/`)
-   - [ ] Request/response DTOs for all entities
-   - [ ] Pagination wrappers
-   - [ ] Validation rules
+ - [x] Database models / entities
+   - [x] `Provider` model
+   - [x] `ApiKey` model
+   - [x] `Model` model
+   - [x] `RequestLog` model
+   - [x] `HealthLog` model
+   - [x] `Setting` model
+   - [x] `Statistic` model
+   - [x] `Notification` model
+   - [x] `Backup` model
+   - [x] `User` model (admin/user/viewer roles)
+ - [x] Alembic migrations
+   - [x] Initial migration generation
+   - [x] Migration scripts for all tables
+ - [x] Repository pattern implementation
+   - [x] Base repository with CRUD
+   - [x] `ProviderRepository`
+   - [x] `ApiKeyRepository`
+   - [x] `RequestLogRepository`
+   - [x] `HealthLogRepository`
+   - [x] `SettingRepository`
+   - [x] `StatisticRepository`
+   - [x] `NotificationRepository`
+   - [x] `UserRepository`
+ - [x] Pydantic schemas (`app/schemas/`)
+   - [x] Request/response DTOs for all entities
+   - [x] Pagination wrappers
+   - [x] Validation rules
  
  ## Phase 4: Provider Plugin System
  
@@ -350,7 +350,7 @@
  |-------|------|--------|
  | 1 | Foundation & Architecture | Complete |
  | 2 | Core Infrastructure | Complete |
- | 3 | Data Layer | Not Started |
+ | 3 | Data Layer | Complete |
  | 4 | Provider Plugin System | Not Started |
  | 5 | API Key Management | Not Started |
  | 6 | Intelligent Routing & Failover | Not Started |
