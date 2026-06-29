@@ -35,8 +35,10 @@ def test_plugin_discovery():
     assert gemini_plugin.provider_slug == "gemini"
 
 def test_gemini_message_mapping():
+    from app.services.provider_plugins.gemini import GeminiProviderPlugin
     mgr = get_plugin_manager()
     gemini = mgr.get_plugin("gemini")
+    assert isinstance(gemini, GeminiProviderPlugin)
     
     req = ChatCompletionRequest(
         model="gemini-1.5-flash",
@@ -54,8 +56,10 @@ def test_gemini_message_mapping():
     assert mapped[2]["role"] == "model"
 
 def test_anthropic_message_mapping():
+    from app.services.provider_plugins.anthropic import AnthropicProviderPlugin
     mgr = get_plugin_manager()
     anthropic = mgr.get_plugin("anthropic")
+    assert isinstance(anthropic, AnthropicProviderPlugin)
     
     req = ChatCompletionRequest(
         model="claude-3-haiku",
