@@ -5,7 +5,8 @@ from typing import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
