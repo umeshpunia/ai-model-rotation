@@ -1,5 +1,5 @@
 import time
-from typing import Any
+from typing import Any, cast
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session
 
@@ -32,7 +32,7 @@ def list_providers(
     """Retrieve all configured providers with pagination."""
     repo = ProviderRepository(session)
     # Order by priority
-    return repo.list(order_by=Provider.priority.asc(), limit=limit, offset=skip)
+    return repo.list(order_by=cast(Any, Provider.priority).asc(), limit=limit, offset=skip)
 
 @router.post("", response_model=ProviderRead, status_code=status.HTTP_201_CREATED)
 def create_provider(
@@ -127,7 +127,7 @@ def delete_provider(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Provider with id {id} not found."
         )
-    repo.delete(id)
+    repo.delete(provider)
 
 @router.post("/{id}/test", response_model=ProviderTestResult)
 async def test_provider(
@@ -145,8 +145,6 @@ async def test_provider(
     if not raw_key:
         # Fall back to highest priority enabled key associated with provider
         key_repo = ApiKeyRepository(session)
-        keys = key_repo.list(filters={"provider_id": id, "is_enabled": True}, order_by=sa_select(cast(Any, ApiKey.priority)).asc() if False else None)
-        # Wait, simple list filtering
         keys = [k for k in key_repo.list() if k.provider_id == id and k.is_enabled]
         keys.sort(key=lambda k: k.priority)
         if not keys:
