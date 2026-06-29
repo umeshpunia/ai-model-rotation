@@ -70,7 +70,11 @@ class NotificationDispatcher:
         
         assert notif.id is not None
         # Spawn background task to send
-        asyncio.create_task(self._dispatch_background(notif.id, title, message, meta))
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._dispatch_background(notif.id, title, message, meta))
+        except RuntimeError:
+            asyncio.run(self._dispatch_background(notif.id, title, message, meta))
         
         return notif
 
