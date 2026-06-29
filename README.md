@@ -207,21 +207,21 @@ Full interactive documentation is available at `/docs` (Swagger UI) and `/redoc`
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | Foundation & Architecture | Complete |
-| 2 | Core Infrastructure | Complete |
-| 3 | Data Layer | Not Started |
-| 4 | Provider Plugin System | Not Started |
-| 5 | API Key Management | Not Started |
-| 6 | Intelligent Routing & Failover | Not Started |
-| 7 | Background Services & Health Monitoring | Not Started |
-| 8 | REST API | Not Started |
-| 9 | Notification System | Not Started |
-| 10 | Configuration & Profiles | Not Started |
-| 11 | Frontend (React + TypeScript) | Not Started |
-| 12 | Desktop Integration | Not Started |
-| 13 | Packaging & Distribution | Not Started |
-| 14 | Testing | Not Started |
-| 15 | Documentation | Not Started |
+| 1 | Foundation & Architecture | ✅ Complete |
+| 2 | Core Infrastructure | ✅ Complete |
+| 3 | Data Layer | ✅ Complete |
+| 4 | Provider Plugin System | ✅ Complete |
+| 5 | API Key Management | ✅ Complete |
+| 6 | Intelligent Routing & Failover | ✅ Complete |
+| 7 | Background Services & Health Monitoring | ✅ Complete |
+| 8 | REST API | ✅ Complete |
+| 9 | Notification System | ✅ Complete |
+| 10 | Configuration & Profiles | ✅ Complete |
+| 11 | Frontend (React + TypeScript) | 🚧 In Progress |
+| 12 | Desktop Integration | ⬜ Not Started |
+| 13 | Packaging & Distribution | ⬜ Not Started |
+| 14 | Testing | ⬜ Not Started |
+| 15 | Documentation | ⬜ Not Started |
 
 See `phase.md` for detailed task breakdowns within each phase.
 
@@ -257,6 +257,8 @@ Key configuration groups:
 - **API key masking** in UI and logs — raw keys are never exposed
 - **Constant-time comparison** for token validation
 
+For details on reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
+
 ---
 
 ## Testing
@@ -273,6 +275,29 @@ npm test
 
 ---
 
+## Contributing
+
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) for details on how to get started, the development workflow, and coding standards.
+
+All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+## Community & Support
+
+- 🐛 **Bug Reports**: [Open an Issue](https://github.com/umeshpunia/ai-model-rotation/issues/new?template=bug_report.md)
+- 💡 **Feature Requests**: [Request a Feature](https://github.com/umeshpunia/ai-model-rotation/issues/new?template=feature_request.md)
+- 📖 **Documentation**: See the `docs/` directory for architecture and deployment guides
+- ⭐ **Star this repo** if you find it useful!
+
+---
+
+## Authors & Contributors
+
+See [AUTHORS.md](AUTHORS.md) for the full list of contributors.
+
+---
+
 ## License
 
-MIT
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
