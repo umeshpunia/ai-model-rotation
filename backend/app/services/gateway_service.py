@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 from typing import AsyncGenerator
 from sqlalchemy.orm import Session
 
+from app.domain.entities.api_key import ApiKey
 from app.domain.entities.request_log import RequestLog
 from app.domain.enums import RoutingMode, KeyStatus, HealthStatus
 from app.schemas.gateway import ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChunk
