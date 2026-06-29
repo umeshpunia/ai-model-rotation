@@ -240,15 +240,15 @@
  
  ## Phase 10: Configuration & Profiles
  
- - [ ] Settings CRUD via API
- - [ ] Settings profiles (Development, Production, Testing)
- - [ ] JSON import/export
- - [ ] Backup system
-   - [ ] Scheduled backups
-   - [ ] Manual backup trigger
-   - [ ] Backup restore
-   - [ ] Backup retention policy
- - [ ] Configuration hot-reload where feasible
+ - [x] Settings CRUD via API
+ - [x] Settings profiles (Development, Production, Testing)
+ - [x] JSON import/export
+ - [x] Backup system
+   - [x] Scheduled backups
+   - [x] Manual backup trigger
+   - [x] Backup restore
+   - [x] Backup retention policy
+ - [x] Configuration hot-reload where feasible
  
  ## Phase 11: Frontend (React + TypeScript)
  
@@ -357,7 +357,7 @@
  | 7 | Background Services & Health Monitoring | Complete |
  | 8 | REST API | Complete |
  | 9 | Notification System | Complete |
- | 10 | Configuration & Profiles | Not Started |
+ | 10 | Configuration & Profiles | Complete |
  | 11 | Frontend (React + TypeScript) | Not Started |
  | 12 | Desktop Integration | Not Started |
  | 13 | Packaging & Distribution | Not Started |
