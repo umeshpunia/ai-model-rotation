@@ -2,8 +2,8 @@ import os
 import shutil
 import zipfile
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any
-from sqlalchemy import delete, func
+from typing import Dict, Any, cast
+from sqlalchemy import delete, func, select as sa_select
 from sqlmodel import Session, select
 
 from app.domain.entities.api_key import ApiKey
@@ -33,8 +33,8 @@ async def health_check_job(session: Session) -> None:
     # Query keys on cooldown or unknown
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     stmt = select(ApiKey).where(
-        (ApiKey.is_enabled == True) &
-        ((ApiKey.status == KeyStatus.COOLDOWN) | (ApiKey.status == KeyStatus.UNKNOWN))
+        cast(Any, (ApiKey.is_enabled == True) &
+        ((ApiKey.status == KeyStatus.COOLDOWN) | (ApiKey.status == KeyStatus.UNKNOWN)))
     )
     keys_to_check = session.exec(stmt).all()
     
@@ -50,9 +50,11 @@ async def health_check_job(session: Session) -> None:
             continue
             
         try:
+            assert key.id is not None
             _logger.info("job.health_check.testing_key", key_id=key.id, key_name=key.name)
             await api_key_service.test_key(key.id)
         except Exception as e:
+            assert key.id is not None
             _logger.error("job.health_check.test_failed", key_id=key.id, error=str(e))
             
     _logger.info("job.health_check.complete")
@@ -65,11 +67,11 @@ def stats_aggregation_job(session: Session) -> None:
     start_interval = now - timedelta(minutes=10)
     
     stmt = (
-        select(
+        sa_select(
             RequestLog.provider_id,
             RequestLog.model,
             func.count(RequestLog.id).label("req_count"),
-            func.sum(RequestLog.success == True).label("succ_count"),
+            func.sum(cast(Any, RequestLog.success == True)).label("succ_count"),
             func.avg(RequestLog.latency_ms).label("avg_latency"),
             func.max(RequestLog.latency_ms).label("max_latency"),
             func.sum(RequestLog.cost).label("cost_sum"),
@@ -77,7 +79,7 @@ def stats_aggregation_job(session: Session) -> None:
             func.sum(RequestLog.completion_tokens).label("comp_tok"),
             func.sum(RequestLog.total_tokens).label("tot_tok")
         )
-        .where(RequestLog.created_at >= start_interval)
+        .where(cast(Any, RequestLog.created_at >= start_interval))
         .group_by(RequestLog.provider_id, RequestLog.model)
     )
     
@@ -106,24 +108,24 @@ def stats_aggregation_job(session: Session) -> None:
         
     session.commit()
     _logger.info("job.stats_aggregation.complete")
-
+ 
 def log_cleanup_job(session: Session, retention_days: int = 14) -> None:
     """Prune RequestLogs and HealthLogs older than configured limit."""
     _logger.info("job.log_cleanup.start", retention_days=retention_days)
     limit = datetime.now(timezone.utc) - timedelta(days=retention_days)
     
-    res1 = session.exec(delete(RequestLog).where(RequestLog.created_at < limit))
-    res2 = session.exec(delete(HealthLog).where(HealthLog.created_at < limit))
+    res1 = session.exec(delete(RequestLog).where(cast(Any, RequestLog.created_at < limit)))
+    res2 = session.exec(delete(HealthLog).where(cast(Any, HealthLog.created_at < limit)))
     session.commit()
     
     _logger.info("job.log_cleanup.complete", deleted_requests=res1.rowcount, deleted_health=res2.rowcount)
-
+ 
 def notification_cleanup_job(session: Session, retention_days: int = 30) -> None:
     """Prune Notification entities older than retention period."""
     _logger.info("job.notification_cleanup.start", retention_days=retention_days)
     limit = datetime.now(timezone.utc) - timedelta(days=retention_days)
     
-    res = session.exec(delete(Notification).where(Notification.created_at < limit))
+    res = session.exec(delete(Notification).where(cast(Any, Notification.created_at < limit)))
     session.commit()
     _logger.info("job.notification_cleanup.complete", deleted_notifications=res.rowcount)
 
