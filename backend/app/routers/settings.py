@@ -47,6 +47,11 @@ def update_settings(
             # Create a new general string setting if it doesn't exist
             new_setting = repo.upsert(key, str(value), profile=payload.profile)
             updated.append(new_setting)
+            
+    session.commit()
+    from app.services.config_hot_reload import trigger_config_hot_reload
+    trigger_config_hot_reload()
+    
     return updated
 
 @router.get("/export", response_model=SettingsExport)
@@ -105,3 +110,7 @@ def import_settings(
             description=s.description,
             is_secret=s.is_secret
         )
+        
+    session.commit()
+    from app.services.config_hot_reload import trigger_config_hot_reload
+    trigger_config_hot_reload()

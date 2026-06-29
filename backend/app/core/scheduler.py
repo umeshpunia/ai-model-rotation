@@ -71,8 +71,18 @@ class BackgroundSchedulerManager:
     def shutdown(self) -> None:
         """Gracefully stop the background scheduler."""
         _logger.info("scheduler.stopping")
-        self.scheduler.shutdown()
+        if self.scheduler.running:
+            self.scheduler.shutdown()
         _logger.info("scheduler.stopped")
+
+    def reload(self) -> None:
+        """Reschedule all scheduler jobs based on the latest configuration settings."""
+        _logger.info("scheduler.reloading")
+        self.settings = get_settings()
+        self.shutdown()
+        # Create a new scheduler instance and restart with fresh intervals
+        self.scheduler = AsyncIOScheduler()
+        self.start()
 
     # Wrapper execution hooks to handle sessions
     async def _run_health_check(self) -> None:

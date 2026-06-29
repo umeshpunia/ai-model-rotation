@@ -8,6 +8,7 @@ from app.routers.health import router as health_router
 from app.routers.statistics import router as statistics_router
 from app.routers.logs import router as logs_router
 from app.routers.notifications import router as notifications_router
+from app.routers.backups import router as backups_router
 from app.routers.gateway import router as gateway_router_impl
 
 # Admin & Management API router (v1)
@@ -21,6 +22,7 @@ api_router.include_router(health_router, tags=["health"])  # Prefix handled inte
 api_router.include_router(statistics_router, prefix="/statistics", tags=["statistics"])
 api_router.include_router(logs_router, prefix="/logs", tags=["logs"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(backups_router, prefix="/backups", tags=["backups"])
 
 # Completions Proxy Gateway Router (v1)
 gateway_router = APIRouter()
