@@ -3,8 +3,8 @@ import shutil
 import zipfile
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any
-from sqlalchemy import select, delete, func
-from sqlmodel import Session
+from sqlalchemy import delete, func
+from sqlmodel import Session, select
 
 from app.domain.entities.api_key import ApiKey
 from app.domain.entities.provider import Provider
@@ -13,18 +13,25 @@ from app.domain.entities.request_log import RequestLog
 from app.domain.entities.health_log import HealthLog
 from app.domain.entities.statistic import Statistic
 from app.domain.entities.notification import Notification
-from app.domain.enums import KeyStatus, HealthStatus
+from app.domain.enums import KeyStatus, HealthStatus, StatisticWindow
 from app.services.api_key_service import ApiKeyService
 from app.core.logging import get_logger
 
 _logger = get_logger("scheduler")
+
+def _to_naive_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 async def health_check_job(session: Session) -> None:
     """Validate keys in cooldown or unknown state and recover them if healthy."""
     _logger.info("job.health_check.start")
     
     # Query keys on cooldown or unknown
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     stmt = select(ApiKey).where(
         (ApiKey.is_enabled == True) &
         ((ApiKey.status == KeyStatus.COOLDOWN) | (ApiKey.status == KeyStatus.UNKNOWN))
@@ -38,7 +45,8 @@ async def health_check_job(session: Session) -> None:
     api_key_service = ApiKeyService(session)
     for key in keys_to_check:
         # Check if cooldown is finished
-        if key.status == KeyStatus.COOLDOWN and key.cooldown_until and key.cooldown_until > now:
+        cooldown_val = _to_naive_utc(key.cooldown_until)
+        if key.status == KeyStatus.COOLDOWN and cooldown_val and cooldown_val > now:
             continue
             
         try:
@@ -63,7 +71,11 @@ def stats_aggregation_job(session: Session) -> None:
             func.count(RequestLog.id).label("req_count"),
             func.sum(RequestLog.success == True).label("succ_count"),
             func.avg(RequestLog.latency_ms).label("avg_latency"),
-            func.sum(RequestLog.total_cost).label("cost_sum")
+            func.max(RequestLog.latency_ms).label("max_latency"),
+            func.sum(RequestLog.cost).label("cost_sum"),
+            func.sum(RequestLog.prompt_tokens).label("prompt_tok"),
+            func.sum(RequestLog.completion_tokens).label("comp_tok"),
+            func.sum(RequestLog.total_tokens).label("tot_tok")
         )
         .where(RequestLog.created_at >= start_interval)
         .group_by(RequestLog.provider_id, RequestLog.model)
@@ -71,23 +83,24 @@ def stats_aggregation_job(session: Session) -> None:
     
     aggregations = session.exec(stmt).all()
     for row in aggregations:
-        provider_id, model_name, req_count, succ_count, avg_latency, cost_sum = row
+        provider_id, model_name, req_count, succ_count, avg_latency, max_latency, cost_sum, prompt_tok, comp_tok, tot_tok = row
         if not provider_id:
             continue
             
-        success_rate = (succ_count or 0) / (req_count or 1)
-        
         stat = Statistic(
             provider_id=provider_id,
             model=model_name,
-            window_start=start_interval,
-            window_end=now,
+            window=StatisticWindow.HOUR,
+            bucket=start_interval,
             request_count=req_count or 0,
             success_count=succ_count or 0,
             failure_count=(req_count or 0) - (succ_count or 0),
-            success_rate=success_rate,
             avg_latency_ms=avg_latency or 0.0,
-            total_cost=cost_sum or 0.0
+            max_latency_ms=max_latency or 0.0,
+            total_cost=cost_sum or 0.0,
+            prompt_tokens=prompt_tok or 0,
+            completion_tokens=comp_tok or 0,
+            total_tokens=tot_tok or 0
         )
         session.add(stat)
         

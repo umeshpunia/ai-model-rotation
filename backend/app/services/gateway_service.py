@@ -42,7 +42,7 @@ class GatewayService:
             status_code=status_code,
             latency_ms=latency_ms,
             error_message=error_msg,
-            total_cost=cost
+            cost=cost
         )
         self.session.add(log)
         self.session.flush()
