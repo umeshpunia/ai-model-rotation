@@ -1,4 +1,4 @@
-﻿"""Structured logging configuration with channel-based rotation.
+"""Structured logging configuration with channel-based rotation.
 
 Channels:
   - app        : application lifecycle events, startup/shutdown
@@ -140,8 +140,7 @@ def configure_logging() -> None:
 
     structlog.configure(
         processors=[
-            *shared_processors[:-1],
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+            *shared_processors,
             renderer,
         ],
         logger_factory=structlog.stdlib.LoggerFactory(),

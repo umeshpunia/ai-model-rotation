@@ -1,4 +1,4 @@
-﻿"""SQLAlchemy engine, session lifecycle, and dependency-injectable session factory."""
+"""SQLAlchemy engine, session lifecycle, and dependency-injectable session factory."""
 from __future__ import annotations
 from contextlib import contextmanager
 from typing import Generator
@@ -28,15 +28,17 @@ def _build_engine() -> Engine:
         url_host=_safe_url(url),
         pool_size=settings.database.pool_size,
     )
-    return create_engine(
-        url,
-        pool_size=settings.database.pool_size,
-        max_overflow=settings.database.max_overflow,
-        pool_recycle=settings.database.pool_recycle,
-        pool_pre_ping=True,
-        echo=settings.database.echo,
-        future=True,
-    )
+    engine_kwargs = {
+        "pool_recycle": settings.database.pool_recycle,
+        "pool_pre_ping": True,
+        "echo": settings.database.echo,
+        "future": True,
+    }
+    if not url.startswith("sqlite"):
+        engine_kwargs["pool_size"] = settings.database.pool_size
+        engine_kwargs["max_overflow"] = settings.database.max_overflow
+
+    return create_engine(url, **engine_kwargs)
 
 
 def _safe_url(url: str) -> str:
