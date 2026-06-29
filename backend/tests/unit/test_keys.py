@@ -38,6 +38,7 @@ def test_api_key_lifecycle_and_encryption():
         provider_repo.add(provider)
         
         # Test creation & encryption
+        assert provider.id is not None
         create_payload = ApiKeyCreate(
             provider_id=provider.id,
             name="Main Key",
