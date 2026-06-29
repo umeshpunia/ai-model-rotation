@@ -1,0 +1,154 @@
+import os
+import shutil
+import zipfile
+from datetime import datetime, timezone, timedelta
+from typing import Dict, Any
+from sqlalchemy import select, delete, func
+from sqlmodel import Session
+
+from app.domain.entities.api_key import ApiKey
+from app.domain.entities.provider import Provider
+from app.domain.entities.model import Model
+from app.domain.entities.request_log import RequestLog
+from app.domain.entities.health_log import HealthLog
+from app.domain.entities.statistic import Statistic
+from app.domain.entities.notification import Notification
+from app.domain.enums import KeyStatus, HealthStatus
+from app.services.api_key_service import ApiKeyService
+from app.core.logging import get_logger
+
+_logger = get_logger("scheduler")
+
+async def health_check_job(session: Session) -> None:
+    """Validate keys in cooldown or unknown state and recover them if healthy."""
+    _logger.info("job.health_check.start")
+    
+    # Query keys on cooldown or unknown
+    now = datetime.now(timezone.utc)
+    stmt = select(ApiKey).where(
+        (ApiKey.is_enabled == True) &
+        ((ApiKey.status == KeyStatus.COOLDOWN) | (ApiKey.status == KeyStatus.UNKNOWN))
+    )
+    keys_to_check = session.exec(stmt).all()
+    
+    if not keys_to_check:
+        _logger.info("job.health_check.idle")
+        return
+        
+    api_key_service = ApiKeyService(session)
+    for key in keys_to_check:
+        # Check if cooldown is finished
+        if key.status == KeyStatus.COOLDOWN and key.cooldown_until and key.cooldown_until > now:
+            continue
+            
+        try:
+            _logger.info("job.health_check.testing_key", key_id=key.id, key_name=key.name)
+            await api_key_service.test_key(key.id)
+        except Exception as e:
+            _logger.error("job.health_check.test_failed", key_id=key.id, error=str(e))
+            
+    _logger.info("job.health_check.complete")
+
+def stats_aggregation_job(session: Session) -> None:
+    """Summarize request logs into periodic statistics records."""
+    _logger.info("job.stats_aggregation.start")
+    
+    now = datetime.now(timezone.utc)
+    start_interval = now - timedelta(minutes=10)
+    
+    stmt = (
+        select(
+            RequestLog.provider_id,
+            RequestLog.model,
+            func.count(RequestLog.id).label("req_count"),
+            func.sum(RequestLog.success == True).label("succ_count"),
+            func.avg(RequestLog.latency_ms).label("avg_latency"),
+            func.sum(RequestLog.total_cost).label("cost_sum")
+        )
+        .where(RequestLog.created_at >= start_interval)
+        .group_by(RequestLog.provider_id, RequestLog.model)
+    )
+    
+    aggregations = session.exec(stmt).all()
+    for row in aggregations:
+        provider_id, model_name, req_count, succ_count, avg_latency, cost_sum = row
+        if not provider_id:
+            continue
+            
+        success_rate = (succ_count or 0) / (req_count or 1)
+        
+        stat = Statistic(
+            provider_id=provider_id,
+            model=model_name,
+            window_start=start_interval,
+            window_end=now,
+            request_count=req_count or 0,
+            success_count=succ_count or 0,
+            failure_count=(req_count or 0) - (succ_count or 0),
+            success_rate=success_rate,
+            avg_latency_ms=avg_latency or 0.0,
+            total_cost=cost_sum or 0.0
+        )
+        session.add(stat)
+        
+    session.commit()
+    _logger.info("job.stats_aggregation.complete")
+
+def log_cleanup_job(session: Session, retention_days: int = 14) -> None:
+    """Prune RequestLogs and HealthLogs older than configured limit."""
+    _logger.info("job.log_cleanup.start", retention_days=retention_days)
+    limit = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    
+    res1 = session.exec(delete(RequestLog).where(RequestLog.created_at < limit))
+    res2 = session.exec(delete(HealthLog).where(HealthLog.created_at < limit))
+    session.commit()
+    
+    _logger.info("job.log_cleanup.complete", deleted_requests=res1.rowcount, deleted_health=res2.rowcount)
+
+def notification_cleanup_job(session: Session, retention_days: int = 30) -> None:
+    """Prune Notification entities older than retention period."""
+    _logger.info("job.notification_cleanup.start", retention_days=retention_days)
+    limit = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    
+    res = session.exec(delete(Notification).where(Notification.created_at < limit))
+    session.commit()
+    _logger.info("job.notification_cleanup.complete", deleted_notifications=res.rowcount)
+
+def backup_job(db_path: str, backup_dir: str, keep_count: int = 7, compress: bool = True) -> None:
+    """Create rolling zipped backups of the SQLite database file."""
+    _logger.info("job.backup.start", db_path=db_path, backup_dir=backup_dir)
+    
+    if not os.path.exists(db_path):
+        _logger.warning("job.backup.missing_db", path=db_path)
+        return
+        
+    os.makedirs(backup_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest_filename = f"backup_{timestamp}.db"
+    dest_path = os.path.join(backup_dir, dest_filename)
+    
+    try:
+        shutil.copy2(db_path, dest_path)
+        
+        if compress:
+            zip_filename = f"{dest_path}.zip"
+            with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(dest_path, arcname=dest_filename)
+            os.remove(dest_path)
+            _logger.info("job.backup.zipped", archive=zip_filename)
+        else:
+            _logger.info("job.backup.copied", path=dest_path)
+            
+        files = []
+        for f in os.listdir(backup_dir):
+            if f.startswith("backup_") and (f.endswith(".db") or f.endswith(".db.zip")):
+                files.append(os.path.join(backup_dir, f))
+                
+        files.sort(key=os.path.getmtime)
+        while len(files) > keep_count:
+            oldest = files.pop(0)
+            os.remove(oldest)
+            _logger.info("job.backup.rotated_out", path=oldest)
+            
+    except Exception as e:
+        _logger.error("job.backup.failed", error=str(e))
