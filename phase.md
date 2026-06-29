@@ -21,8 +21,8 @@
  - [x] `alembic/` directory with versions folder
  - [x] `tests/` hierarchy (unit, integration, services)
  - [x] `.env.example`
- - [ ] `README.md` (backend)
- - [ ] `README.md` (project root)
+ - [x] `README.md` (backend)
+ - [x] `README.md` (project root)
  
  ## Phase 2: Core Infrastructure
  
@@ -348,7 +348,7 @@
  
  | Phase | Name | Status |
  |-------|------|--------|
- | 1 | Foundation & Architecture | Partially Complete |
+ | 1 | Foundation & Architecture | Complete |
  | 2 | Core Infrastructure | Complete |
  | 3 | Data Layer | Not Started |
  | 4 | Provider Plugin System | Not Started |
