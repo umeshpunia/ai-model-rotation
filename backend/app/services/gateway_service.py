@@ -136,3 +136,52 @@ class GatewayService:
             
         self.session.add(key)
         self.session.flush()
+
+    async def execute_stream_chat(
+        self,
+        request: ChatCompletionRequest,
+        mode: RoutingMode,
+        task_type: str | None = None
+    ) -> AsyncGenerator[ChatCompletionChunk, None]:
+        candidates = self.routing_engine.select_candidates(request.model, mode, task_type)
+        if not candidates:
+            raise ProviderUnavailableError("No usable providers or API keys available for this model.")
+
+        for provider, key, model_info in candidates:
+            start_time = time.perf_counter()
+            try:
+                assert key.id is not None
+                raw_key = self.api_key_service.reveal_key(key.id)
+                plugin = self.api_key_service.plugin_manager.get_plugin(provider.plugin)
+                
+                stream_generator = await plugin.stream_chat_completion(raw_key, provider.base_url, request, provider.config)
+                
+                moment = datetime.now(timezone.utc)
+                key.last_used_at = moment
+                key.last_success_at = moment
+                key.success_count += 1
+                key.usage_count += 1
+                key.consecutive_failures = 0
+                key.status = KeyStatus.HEALTHY
+                key.health_status = HealthStatus.HEALTHY
+                self.session.add(key)
+                self.session.flush()
+
+                async for chunk in stream_generator:
+                    yield chunk
+
+                latency_ms = (time.perf_counter() - start_time) * 1000.0
+                self._log_request(provider.id, key.id, request.model, True, 200, latency_ms, cost=0.0)
+                return
+                
+            except UpstreamError as err:
+                latency_ms = (time.perf_counter() - start_time) * 1000.0
+                self._handle_rotation_rules(key, err.status_code, str(err))
+                self._log_request(provider.id, key.id, request.model, False, err.status_code, latency_ms, str(err))
+                
+            except Exception as exc:
+                latency_ms = (time.perf_counter() - start_time) * 1000.0
+                self._handle_rotation_rules(key, 500, str(exc))
+                self._log_request(provider.id, key.id, request.model, False, 500, latency_ms, str(exc))
+
+        raise ProviderUnavailableError("All provider connection candidates were exhausted without success.")
