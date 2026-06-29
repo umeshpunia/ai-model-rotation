@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session
-from typing import Any
+from typing import Any, cast
 
 from app.core.database import get_db
 from app.domain.entities.notification import Notification
@@ -25,7 +25,7 @@ def list_notifications(
     filters = {}
     if is_read is not None:
         filters["is_read"] = is_read
-    return repo.list(filters=filters, order_by=Notification.created_at.desc(), limit=limit, offset=skip)
+    return repo.list(filters=filters, order_by=cast(Any, Notification.created_at).desc(), limit=limit, offset=skip)
 
 @router.put("/{id}/read", response_model=NotificationRead)
 def mark_notification_read(

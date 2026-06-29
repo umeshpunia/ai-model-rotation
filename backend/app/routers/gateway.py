@@ -2,7 +2,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, cast
 
 from app.core.database import get_db
 from app.core.exceptions import ProviderUnavailableError
@@ -196,7 +196,7 @@ async def create_embeddings_legacy_alias(
 def list_gateway_providers(session: Session = Depends(get_db)) -> list[Any]:
     """List active providers under gateway namespace."""
     repo = ProviderRepository(session)
-    return repo.list(order_by=Provider.priority.asc())
+    return repo.list(order_by=cast(Any, Provider.priority).asc())
 
 @router.get("/models", response_model=list[Any])
 def list_gateway_models(session: Session = Depends(get_db)) -> list[Any]:
