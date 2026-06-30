@@ -1,5 +1,6 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+import time
+from fastapi import APIRouter, Depends, HTTPException, Header, status, Request
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 from typing import Any, AsyncGenerator, cast
@@ -247,3 +248,150 @@ def gateway_statistics(session: Session = Depends(get_db)) -> list[Any]:
     from app.repositories.statistic_repository import StatisticRepository
     repo = StatisticRepository(session)
     return repo.list()
+
+from app.schemas.gateway import Message
+
+@router.post("/messages")
+async def anthropic_messages(
+    request: Request,
+    x_routing_strategy: str | None = Header(default=None, alias="X-Routing-Strategy"),
+    session: Session = Depends(get_db)
+) -> Any:
+    """Proxy Anthropic-compatible messages and stream requests with dynamic failover translation."""
+    body = await request.json()
+    model_name = body.get("model")
+    messages = body.get("messages", [])
+    stream = body.get("stream", False)
+    max_tokens = body.get("max_tokens", 4096)
+    temperature = body.get("temperature", 1.0)
+    system = body.get("system", None)
+    
+    # Map Anthropic request to internal ChatCompletionRequest
+    internal_messages = []
+    if system:
+        internal_messages.append(Message(role="system", content=system))
+        
+    for msg in messages:
+        role = msg.get("role")
+        content = msg.get("content")
+        if isinstance(content, list):
+            text_parts = []
+            for block in content:
+                if block.get("type") == "text":
+                    text_parts.append(block.get("text", ""))
+            content_str = "\n".join(text_parts)
+        else:
+            content_str = str(content)
+            
+        internal_messages.append(Message(role=role, content=content_str))
+        
+    cc_request = ChatCompletionRequest(
+        model=model_name,
+        messages=internal_messages,
+        temperature=temperature,
+        stream=stream,
+        max_tokens=max_tokens
+    )
+    
+    mode = _resolve_routing_mode(x_routing_strategy, session)
+    gateway_service = GatewayService(session)
+    
+    if stream:
+        async def stream_generator() -> AsyncGenerator[str, None]:
+            try:
+                generator = gateway_service.execute_stream_chat(cc_request, mode)
+                
+                # 1. message_start event
+                message_start = {
+                    "type": "message_start",
+                    "message": {
+                        "id": "msg_stream_" + str(int(time.time())),
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [],
+                        "model": model_name,
+                        "stop_reason": None,
+                        "stop_sequence": None,
+                        "usage": {"input_tokens": 0, "output_tokens": 0}
+                    }
+                }
+                yield f"event: message_start\ndata: {json.dumps(message_start)}\n\n"
+                
+                # 2. content_block_start event
+                content_block_start = {
+                    "type": "content_block_start",
+                    "index": 0,
+                    "content_block": {"type": "text", "text": ""}
+                }
+                yield f"event: content_block_start\ndata: {json.dumps(content_block_start)}\n\n"
+                
+                # 3. content deltas
+                async for chunk in generator:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        delta_text = chunk.choices[0].delta.content
+                        content_block_delta = {
+                            "type": "content_block_delta",
+                            "index": 0,
+                            "delta": {"type": "text_delta", "text": delta_text}
+                        }
+                        yield f"event: content_block_delta\ndata: {json.dumps(content_block_delta)}\n\n"
+                        
+                # 4. content_block_stop
+                content_block_stop = {
+                    "type": "content_block_stop",
+                    "index": 0
+                }
+                yield f"event: content_block_stop\ndata: {json.dumps(content_block_stop)}\n\n"
+                
+                # 5. message_delta
+                message_delta = {
+                    "type": "message_delta",
+                    "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+                    "usage": {"output_tokens": 0}
+                }
+                yield f"event: message_delta\ndata: {json.dumps(message_delta)}\n\n"
+                
+                # 6. message_stop
+                message_stop = {
+                    "type": "message_stop"
+                }
+                yield f"event: message_stop\ndata: {json.dumps(message_stop)}\n\n"
+                
+            except Exception as e:
+                _logger.error("gateway.anthropic_stream_failed", error=str(e))
+                yield f"event: error\ndata: {json.dumps({'error': {'type': 'api_error', 'message': str(e)}})}\n\n"
+                
+        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+        
+    try:
+        res = await gateway_service.execute_chat(cc_request, mode)
+        content_text = res.choices[0].message.content
+        return {
+            "id": res.id,
+            "type": "message",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": content_text
+                }
+            ],
+            "model": res.model,
+            "stop_reason": "end_turn" if res.choices[0].finish_reason != "length" else "max_tokens",
+            "stop_sequence": None,
+            "usage": {
+                "input_tokens": res.usage.prompt_tokens,
+                "output_tokens": res.usage.completion_tokens
+            }
+        }
+    except ProviderUnavailableError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
