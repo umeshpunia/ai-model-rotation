@@ -98,6 +98,53 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  // Claude Settings State
+  const [claudeApiKey, setClaudeApiKey] = useState("");
+  const [claudeBaseUrl, setClaudeBaseUrl] = useState("");
+  const [claudeExists, setClaudeExists] = useState(false);
+
+  // Fetch Claude settings
+  const { data: claudeData } = useQuery({
+    queryKey: ["claudeSettings"],
+    queryFn: async () => {
+      const res = await apiClient.get("/api/v1/settings/claude");
+      if (res.data) {
+        setClaudeApiKey(res.data.apiKey || "");
+        setClaudeBaseUrl(res.data.baseUrl || "");
+        setClaudeExists(res.data.exists || false);
+      }
+      return res.data;
+    },
+  });
+
+  // Update Claude Settings Mutation
+  const updateClaudeMutation = useMutation({
+    mutationFn: async (payload: { api_key: string; base_url: string }) => {
+      await apiClient.post("/api/v1/settings/claude", payload);
+    },
+    onSuccess: () => {
+      alert("Claude CLI settings updated and backed up successfully.");
+      queryClient.invalidateQueries({ queryKey: ["claudeSettings"] });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.detail || "Failed to update Claude settings.");
+    }
+  });
+
+  // Restore Claude Settings Mutation
+  const restoreClaudeMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.post("/api/v1/settings/claude/restore");
+    },
+    onSuccess: () => {
+      alert("Claude settings.json restored successfully from settings.json.bak.");
+      queryClient.invalidateQueries({ queryKey: ["claudeSettings"] });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.detail || "Restore failed. Verify if backup file exists.");
+    }
+  });
+
   return (
     <div className="space-y-8">
       <div>
@@ -200,77 +247,139 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side: Backups Lifecycle */}
-        <div className="p-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm h-fit">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white">
-                Database Snapshots
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Rolling SQLite database backups.</p>
+        {/* Right Side: Backups Lifecycle & Claude CLI Configuration */}
+        <div className="space-y-8">
+          <div className="p-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm h-fit">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  Database Snapshots
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Rolling SQLite database backups.</p>
+              </div>
+              <button
+                onClick={() => createBackupMutation.mutate()}
+                disabled={createBackupMutation.isPending}
+                className="flex items-center space-x-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-violet-500/10 transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${createBackupMutation.isPending ? "animate-spin" : ""}`} />
+                <span>Create Snapshot</span>
+              </button>
             </div>
-            <button
-              onClick={() => createBackupMutation.mutate()}
-              disabled={createBackupMutation.isPending}
-              className="flex items-center space-x-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-violet-500/10 transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${createBackupMutation.isPending ? "animate-spin" : ""}`} />
-              <span>Create Snapshot</span>
-            </button>
+
+            {loadingBackups ? (
+              <div className="py-6 text-center text-slate-500 text-xs">Retrieving database backups...</div>
+            ) : (
+              <div className="space-y-4 max-h-[250px] overflow-y-auto">
+                {backups?.map((backup: any) => (
+                  <div
+                    key={backup.id}
+                    className="p-4 bg-slate-50 dark:bg-slate-900/80 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
+                  >
+                    <div className="space-y-1">
+                      <div className="text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[200px]">
+                        {backup.filename}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-medium">
+                        {new Date(backup.created_at).toLocaleString()} • {(backup.size_bytes / 1024).toFixed(1)} KB
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => {
+                          if (confirm("Restore database? Current active transaction engine will reboot.")) {
+                            restoreBackupMutation.mutate(backup.id);
+                          }
+                        }}
+                        disabled={restoreBackupMutation.isPending}
+                        className="flex items-center space-x-1.5 py-1.5 px-3 rounded-lg bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/20 text-xs font-semibold transition-colors"
+                      >
+                        <ArrowUpCircle className="w-3.5 h-3.5" />
+                        <span>Restore</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm("Delete this database backup snapshot?")) {
+                            deleteBackupMutation.mutate(backup.id);
+                          }
+                        }}
+                        className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {(!backups || backups.length === 0) && (
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    No database backup snapshots found.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {loadingBackups ? (
-            <div className="py-6 text-center text-slate-500 text-xs">Retrieving database backups...</div>
-          ) : (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto">
-              {backups?.map((backup: any) => (
-                <div
-                  key={backup.id}
-                  className="p-4 bg-slate-50 dark:bg-slate-900/80 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
-                >
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[200px]">
-                      {backup.filename}
-                    </div>
-                    <div className="text-[10px] text-slate-400 font-medium">
-                      {new Date(backup.created_at).toLocaleString()} • {(backup.size_bytes / 1024).toFixed(1)} KB
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        if (confirm("Restore database? Current active transaction engine will reboot.")) {
-                          restoreBackupMutation.mutate(backup.id);
-                        }
-                      }}
-                      disabled={restoreBackupMutation.isPending}
-                      className="flex items-center space-x-1.5 py-1.5 px-3 rounded-lg bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/20 text-xs font-semibold transition-colors"
-                    >
-                      <ArrowUpCircle className="w-3.5 h-3.5" />
-                      <span>Restore</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm("Delete this database backup snapshot?")) {
-                          deleteBackupMutation.mutate(backup.id);
-                        }
-                      }}
-                      className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {(!backups || backups.length === 0) && (
-                <div className="py-8 text-center text-slate-400 text-xs">
-                  No database backup snapshots found.
-                </div>
-              )}
+          <div className="p-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  Claude CLI Configuration (~/.claude/settings.json)
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Manage connection keys, base URLs, and backups for your local Claude CLI.
+                </p>
+              </div>
             </div>
-          )}
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">Claude Base URL</label>
+                <input
+                  type="text"
+                  value={claudeBaseUrl}
+                  onChange={(e) => setClaudeBaseUrl(e.target.value)}
+                  placeholder="https://capi.aerolink.lat/ or http://localhost:8080/v1"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-slate-900 dark:text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">Claude API Key</label>
+                <input
+                  type="password"
+                  value={claudeApiKey}
+                  onChange={(e) => setClaudeApiKey(e.target.value)}
+                  placeholder="aero_live_..."
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-slate-900 dark:text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => updateClaudeMutation.mutate({ api_key: claudeApiKey, base_url: claudeBaseUrl })}
+                  disabled={updateClaudeMutation.isPending}
+                  className="flex items-center space-x-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-violet-500/10 transition-colors"
+                >
+                  <span>Update Claude Config</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    if (confirm("Are you sure you want to restore Claude settings from the backup file?")) {
+                      restoreClaudeMutation.mutate();
+                    }
+                  }}
+                  disabled={restoreClaudeMutation.isPending}
+                  className="flex items-center space-x-1.5 py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+                >
+                  <span>Restore Claude Backup</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   );
