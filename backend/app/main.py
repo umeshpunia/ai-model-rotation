@@ -115,3 +115,28 @@ def upstream_exception_handler(request: Request, exc: UpstreamError) -> Response
 # Register Routers
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(gateway_router, prefix="/v1")
+
+# Mount static files for compiled React frontend dashboard
+import sys
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    static_dir = os.path.join(sys._MEIPASS, "frontend", "dist")
+else:
+    static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+
+if os.path.exists(static_dir):
+    # Mount assets folder
+    assets_dir = os.path.join(static_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    
+    # Catch-all route to serve index.html for React Router
+    @app.get("/{fallback_path:path}")
+    async def serve_frontend(fallback_path: str) -> FileResponse:
+        if fallback_path.startswith("api/") or fallback_path.startswith("v1/") or fallback_path == "docs" or fallback_path == "openapi.json":
+            raise NotFoundError("Resource not found")
+        return FileResponse(os.path.join(static_dir, "index.html"))
+
