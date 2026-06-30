@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "AI Gateway Pro Team", email = "[email protected]"},
+    {name = "AI Gateway Pro Team", email = "info@aigateway.pro"},
 ]
 dependencies = [
     "fastapi>=0.115.0",
