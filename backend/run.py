@@ -20,8 +20,8 @@ def main() -> None:
         sys.exit(1)
 
     settings = get_settings()
-    host = settings.host.host_bind
-    port = settings.host.host_port
+    host = settings.host.host
+    port = settings.host.port
 
     # 2. Configure Windows autostart based on configuration settings
     try:
