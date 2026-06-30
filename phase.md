@@ -286,12 +286,12 @@
  
  ## Phase 12: Desktop Integration
  
- - [ ] System Tray integration
-   - [ ] Minimize to tray
-   - [ ] Right-click menu: Open Dashboard, Restart Gateway, Pause Gateway, Exit
- - [ ] Background service mode (runs after UI closes)
- - [ ] Auto-start with Windows option
- - [ ] Window state persistence
+ - [x] System Tray integration
+   - [x] Minimize to tray
+   - [x] Right-click menu: Open Dashboard, Restart Gateway, Pause Gateway, Exit
+ - [x] Background service mode (runs after UI closes)
+ - [x] Auto-start with Windows option
+ - [x] Window state persistence
  
  ## Phase 13: Packaging & Distribution
  
@@ -359,7 +359,7 @@
  | 9 | Notification System | Complete |
  | 10 | Configuration & Profiles | Complete |
  | 11 | Frontend (React + TypeScript) | Complete |
- | 12 | Desktop Integration | Not Started |
+ | 12 | Desktop Integration | Complete |
  | 13 | Packaging & Distribution | Not Started |
  | 14 | Testing | Not Started |
  | 15 | Documentation | Not Started |
