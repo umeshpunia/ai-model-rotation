@@ -204,6 +204,7 @@ export const DashboardPage: React.FC = () => {
                     borderRadius: "12px",
                   }}
                   labelStyle={{ color: "#fff", fontWeight: "bold" }}
+                  itemStyle={{ color: "#cbd5e1" }}
                 />
                 <Area
                   type="monotone"
@@ -239,6 +240,7 @@ export const DashboardPage: React.FC = () => {
                     borderRadius: "12px",
                   }}
                   labelStyle={{ color: "#fff", fontWeight: "bold" }}
+                  itemStyle={{ color: "#cbd5e1" }}
                 />
                 <Bar dataKey="latency" radius={[0, 8, 8, 0]} barSize={16}>
                   {latencyPerProvider.map((_item: any, index: number) => (
