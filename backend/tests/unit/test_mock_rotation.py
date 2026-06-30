@@ -98,6 +98,8 @@ async def test_gateway_service_key_rotation_fallback():
             # Verify database states after transaction session commits
             with session_scope() as session:
                 k_repo = ApiKeyRepository(session)
+                assert key1.id is not None
+                assert key2.id is not None
                 db_key1 = k_repo.get(key1.id)
                 db_key2 = k_repo.get(key2.id)
                 
