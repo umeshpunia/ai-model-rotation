@@ -1,0 +1,54 @@
+{
+  "profile": "default",
+  "overwrite": true,
+  "settings": [
+    {
+      "key": "app_name",
+      "value": "AI Gateway Pro",
+      "value_type": "string",
+      "group": "general",
+      "description": "The name of this AI Gateway installation.",
+      "is_secret": false
+    },
+    {
+      "key": "log_level",
+      "value": "INFO",
+      "value_type": "string",
+      "group": "general",
+      "description": "Log level constraint (DEBUG, INFO, WARNING, ERROR, CRITICAL).",
+      "is_secret": false
+    },
+    {
+      "key": "host",
+      "value": "127.0.0.1",
+      "value_type": "string",
+      "group": "host",
+      "description": "Host interface IP to bind uvicorn server.",
+      "is_secret": false
+    },
+    {
+      "key": "port",
+      "value": 8080,
+      "value_type": "integer",
+      "group": "host",
+      "description": "Port to bind uvicorn server.",
+      "is_secret": false
+    },
+    {
+      "key": "health_check_interval_seconds",
+      "value": 300,
+      "value_type": "integer",
+      "group": "scheduler",
+      "description": "Interval between keys health validation checks.",
+      "is_secret": false
+    },
+    {
+      "key": "backup_interval_seconds",
+      "value": 86400,
+      "value_type": "integer",
+      "group": "scheduler",
+      "description": "Interval between automatic database snapshot runs.",
+      "is_secret": false
+    }
+  ]
+}
