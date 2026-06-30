@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select
-from typing import Any
+from typing import Any, cast
 from datetime import datetime, timezone, timedelta
 
 from app.core.database import get_db
@@ -47,9 +47,6 @@ def get_dashboard_summary(
     
     # Prune naive offset time comparison for today
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
-    logs_stmt = select(RequestLog).where(cast(Any, RequestLog.created_at >= today))
-    # Wait, we import cast in python files. We can use typing.cast
-    from typing import cast
     logs_stmt = select(RequestLog).where(cast(Any, RequestLog.created_at >= today))
     logs_today = session.exec(logs_stmt).all()
     
