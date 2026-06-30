@@ -114,3 +114,92 @@ def import_settings(
     session.commit()
     from app.services.config_hot_reload import trigger_config_hot_reload
     trigger_config_hot_reload()
+
+from pydantic import BaseModel
+
+class ClaudeSettingsUpdate(BaseModel):
+    api_key: str
+    base_url: str
+    model: str | None = None
+
+@router.get("/claude")
+def get_claude_settings(
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    path = os.path.expanduser("~/.claude/settings.json")
+    if not os.path.exists(path):
+        return {"exists": False, "apiKey": "", "baseUrl": "", "model": ""}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        env = data.get("env", {})
+        return {
+            "exists": True,
+            "apiKey": env.get("ANTHROPIC_API_KEY", ""),
+            "baseUrl": env.get("ANTHROPIC_BASE_URL", ""),
+            "model": data.get("model", "")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read Claude settings: {str(e)}")
+
+@router.post("/claude")
+def update_claude_settings(
+    payload: ClaudeSettingsUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    path = os.path.expanduser("~/.claude/settings.json")
+    backup_path = os.path.expanduser("~/.claude/settings.json.bak")
+    
+    # Check directory
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    
+    # Take backup if existing file exists
+    if os.path.exists(path):
+        try:
+            import shutil
+            shutil.copy2(path, backup_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to create backup: {str(e)}")
+            
+    # Read current data or scaffold new
+    data = {}
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            pass
+            
+    if "env" not in data:
+        data["env"] = {}
+        
+    data["env"]["ANTHROPIC_API_KEY"] = payload.api_key
+    data["env"]["ANTHROPIC_BASE_URL"] = payload.base_url
+    if payload.model:
+        data["model"] = payload.model
+    # Also update apiKeyHelper to match
+    data["apiKeyHelper"] = f"echo '{payload.api_key}'"
+    
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return {"success": True, "message": "Claude settings updated and backed up successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to write Claude settings: {str(e)}")
+
+@router.post("/claude/restore")
+def restore_claude_settings(
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    path = os.path.expanduser("~/.claude/settings.json")
+    backup_path = os.path.expanduser("~/.claude/settings.json.bak")
+    
+    if not os.path.exists(backup_path):
+        raise HTTPException(status_code=400, detail="No backup settings.json.bak file exists to restore.")
+        
+    try:
+        import shutil
+        shutil.copy2(backup_path, path)
+        return {"success": True, "message": "Claude settings restored successfully from backup."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to restore backup: {str(e)}")
