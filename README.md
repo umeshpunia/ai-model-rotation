@@ -287,7 +287,13 @@ All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md
 
 - 🐛 **Bug Reports**: [Open an Issue](https://github.com/umeshpunia/ai-model-rotation/issues/new?template=bug_report.md)
 - 💡 **Feature Requests**: [Request a Feature](https://github.com/umeshpunia/ai-model-rotation/issues/new?template=feature_request.md)
-- 📖 **Documentation**: See the `docs/` directory for architecture and deployment guides
+- 📖 **Documentation**: Detailed reference resources are located in the [docs/](docs/) directory:
+  - ⚙️ [Installation & Setup](docs/installation.md)
+  - 🛠️ [Developer Guide](docs/developer.md)
+  - 🔌 [API Reference](docs/api.md)
+  - 🏛️ [System Architecture](docs/architecture.md)
+  - 🔍 [Troubleshooting & FAQs](docs/troubleshooting.md)
+  - 💻 [User Dashboard Manual](docs/usermanual.md)
 - ⭐ **Star this repo** if you find it useful!
 
 ---
