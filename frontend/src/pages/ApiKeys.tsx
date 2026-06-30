@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
 import { Plus, Edit2, Trash2, Eye, EyeOff, ShieldAlert, CheckCircle, RefreshCw, Key } from "lucide-react";
+import { notifySuccess, notifyError, confirmAction } from "../utils/alerts";
 
 export const ApiKeysPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -65,7 +66,11 @@ export const ApiKeysPage: React.FC = () => {
       return res.data;
     },
     onSuccess: (data) => {
-      alert(data.message || `Test Connection: ${data.success ? "Success" : "Failed"}`);
+      if (data.success) {
+        notifySuccess(data.message || "Key test connection succeeded!");
+      } else {
+        notifyError(data.message || "Key test connection failed!");
+      }
       queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
     },
   });
@@ -231,8 +236,14 @@ export const ApiKeysPage: React.FC = () => {
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm("Are you sure you want to delete this API Key?")) {
+                          onClick={async () => {
+                            const confirmed = await confirmAction({
+                              title: "Delete API Key",
+                              text: "Are you sure you want to delete this API Key? This action is permanent.",
+                              confirmButtonText: "Delete",
+                              cancelButtonText: "Cancel"
+                            });
+                            if (confirmed) {
                               deleteMutation.mutate(apiKey.id);
                             }
                           }}

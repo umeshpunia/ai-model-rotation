@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
 import { Plus, Edit2, Trash2, ShieldAlert, CheckCircle, RefreshCw } from "lucide-react";
+import { notifySuccess, notifyError, confirmAction } from "../utils/alerts";
 
 export const ProvidersPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -55,10 +56,14 @@ export const ProvidersPage: React.FC = () => {
       return res.data;
     },
     onSuccess: (data) => {
-      alert(data.message || `Test Connection result: ${data.success ? "Success" : "Failed"}`);
+      if (data.success) {
+        notifySuccess(data.message || "Provider connection succeeded!");
+      } else {
+        notifyError(data.message || "Provider connection failed!");
+      }
     },
     onError: () => {
-      alert("Failed to reach provider. Verify credentials or base URL.");
+      notifyError("Failed to reach provider. Verify credentials or base URL.");
     },
   });
 
@@ -170,8 +175,14 @@ export const ProvidersPage: React.FC = () => {
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => {
-                    if (confirm("Are you sure you want to delete this provider? This action is permanent.")) {
+                  onClick={async () => {
+                    const confirmed = await confirmAction({
+                      title: "Delete Provider",
+                      text: "Are you sure you want to delete this provider? This action is permanent.",
+                      confirmButtonText: "Delete",
+                      cancelButtonText: "Cancel"
+                    });
+                    if (confirmed) {
                       deleteMutation.mutate(provider.id);
                     }
                   }}

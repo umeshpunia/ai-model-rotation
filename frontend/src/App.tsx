@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "react-hot-toast";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard";
@@ -22,6 +23,7 @@ const queryClient = new QueryClient({
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
       <BrowserRouter>
         <Routes>
           {/* Public Login Route */}

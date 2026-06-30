@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
 import { RefreshCw, Download, Upload, Trash2, ArrowUpCircle } from "lucide-react";
+import { notifySuccess, notifyError, confirmAction } from "../utils/alerts";
 
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -36,7 +37,7 @@ export const SettingsPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["backups"] });
-      alert("Backup snapshot created successfully.");
+      notifySuccess("Backup snapshot created successfully.");
     },
   });
 
@@ -46,11 +47,11 @@ export const SettingsPage: React.FC = () => {
       await apiClient.post(`/api/v1/backups/${id}/restore`);
     },
     onSuccess: () => {
-      alert("Database snapshot restored successfully.");
+      notifySuccess("Database snapshot restored successfully.");
       window.location.reload(); // Reload context since active DB state re-initialized
     },
     onError: () => {
-      alert("Restore failed. Verify engine health.");
+      notifyError("Restore failed. Verify engine health.");
     },
   });
 
@@ -76,7 +77,7 @@ export const SettingsPage: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert("Export failed.");
+      notifyError("Export failed.");
     }
   };
 
@@ -92,9 +93,9 @@ export const SettingsPage: React.FC = () => {
       });
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       setImportJson("");
-      alert("Configuration snapshot imported successfully.");
+      notifySuccess("Configuration snapshot imported successfully.");
     } catch (err: any) {
-      alert(err.message || "Invalid JSON configuration syntax.");
+      notifyError(err.message || "Invalid JSON configuration syntax.");
     }
   };
 
@@ -123,11 +124,11 @@ export const SettingsPage: React.FC = () => {
       await apiClient.post("/api/v1/settings/claude", payload);
     },
     onSuccess: () => {
-      alert("Claude CLI settings updated and backed up successfully.");
+      notifySuccess("Claude CLI settings updated and backed up successfully.");
       queryClient.invalidateQueries({ queryKey: ["claudeSettings"] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.detail || "Failed to update Claude settings.");
+      notifyError(err.response?.data?.detail || "Failed to update Claude settings.");
     }
   });
 
@@ -137,11 +138,11 @@ export const SettingsPage: React.FC = () => {
       await apiClient.post("/api/v1/settings/claude/restore");
     },
     onSuccess: () => {
-      alert("Claude settings.json restored successfully from settings.json.bak.");
+      notifySuccess("Claude settings.json restored successfully from settings.json.bak.");
       queryClient.invalidateQueries({ queryKey: ["claudeSettings"] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.detail || "Restore failed. Verify if backup file exists.");
+      notifyError(err.response?.data?.detail || "Restore failed. Verify if backup file exists.");
     }
   });
 
@@ -287,8 +288,14 @@ export const SettingsPage: React.FC = () => {
                     
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => {
-                          if (confirm("Restore database? Current active transaction engine will reboot.")) {
+                        onClick={async () => {
+                          const confirmed = await confirmAction({
+                            title: "Restore Database Backup",
+                            text: "Are you sure you want to restore this database snapshot? The active transaction engine will reboot.",
+                            confirmButtonText: "Restore",
+                            cancelButtonText: "Cancel"
+                          });
+                          if (confirmed) {
                             restoreBackupMutation.mutate(backup.id);
                           }
                         }}
@@ -299,8 +306,14 @@ export const SettingsPage: React.FC = () => {
                         <span>Restore</span>
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm("Delete this database backup snapshot?")) {
+                        onClick={async () => {
+                          const confirmed = await confirmAction({
+                            title: "Delete Backup Snapshot",
+                            text: "Are you sure you want to delete this database backup snapshot? This action is permanent.",
+                            confirmButtonText: "Delete",
+                            cancelButtonText: "Cancel"
+                          });
+                          if (confirmed) {
                             deleteBackupMutation.mutate(backup.id);
                           }
                         }}
@@ -374,8 +387,14 @@ export const SettingsPage: React.FC = () => {
                 </button>
                 
                 <button
-                  onClick={() => {
-                    if (confirm("Are you sure you want to restore Claude settings from the backup file?")) {
+                  onClick={async () => {
+                    const confirmed = await confirmAction({
+                      title: "Restore Claude Configuration Backup",
+                      text: "Are you sure you want to restore the Claude CLI configuration settings from the backup file? This will overwrite your active settings.",
+                      confirmButtonText: "Restore",
+                      cancelButtonText: "Cancel"
+                    });
+                    if (confirmed) {
                       restoreClaudeMutation.mutate();
                     }
                   }}

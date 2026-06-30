@@ -5,7 +5,8 @@
   "main": "index.js",
   "bin": {
     "air-server": "./bin/air-server.js",
-    "air-claude": "./bin/air-claude.js"
+    "air-claude": "./bin/air-claude.js",
+    "air-opencode": "./bin/air-opencode.js"
   },
   "type": "module"
 }
