@@ -104,7 +104,7 @@ export const SettingsPage: React.FC = () => {
   const [claudeExists, setClaudeExists] = useState(false);
 
   // Fetch Claude settings
-  const { data: claudeData } = useQuery({
+  useQuery({
     queryKey: ["claudeSettings"],
     queryFn: async () => {
       const res = await apiClient.get("/api/v1/settings/claude");
@@ -323,9 +323,18 @@ export const SettingsPage: React.FC = () => {
           <div className="p-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">
-                  Claude CLI Configuration (~/.claude/settings.json)
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    Claude CLI Configuration (~/.claude/settings.json)
+                  </h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    claudeExists 
+                      ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                      : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                  }`}>
+                    {claudeExists ? "Active" : "Not Found"}
+                  </span>
+                </div>
                 <p className="text-xs text-slate-400 mt-1">
                   Manage connection keys, base URLs, and backups for your local Claude CLI.
                 </p>
