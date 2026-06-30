@@ -24,24 +24,27 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      // API expects form-encoded request parameters for standard OAuth2 login
-      const formData = new URLSearchParams();
-      formData.append("username", usernameInput);
-      formData.append("password", password);
-
-      const response = await apiClient.post("/api/v1/auth/login", formData, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+      const response = await apiClient.post("/api/v1/auth/login", {
+        username: usernameInput,
+        password: password,
       });
 
       const { access_token, role, username } = response.data;
       login(access_token, role, username || usernameInput);
       navigate("/");
     } catch (err: any) {
-      setError(
-        err.response?.data?.detail || "Invalid username or password credentials."
-      );
+      let msg = "Invalid username or password credentials.";
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === "string") {
+          msg = detail;
+        } else if (Array.isArray(detail) && detail.length > 0) {
+          msg = detail[0].msg || JSON.stringify(detail);
+        } else {
+          msg = JSON.stringify(detail);
+        }
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
