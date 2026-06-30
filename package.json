@@ -1,0 +1,11 @@
+{
+  "name": "ai-gateway-pro-cli",
+  "version": "1.0.0",
+  "description": "Global CLI command wrappers for AI Gateway Pro.",
+  "main": "index.js",
+  "bin": {
+    "fcc-server": "./bin/fcc-server.js",
+    "fcc-claude": "./bin/fcc-claude.js"
+  },
+  "type": "module"
+}
