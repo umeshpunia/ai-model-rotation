@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "child_process";
 
-console.log("Launching Claude Code via AI Gateway Pro (fcc-claude equivalent)...");
+console.log("Launching Claude Code via AI Gateway Pro (air-claude)...");
 
 // Setup the Anthropic base URL and credentials variables to intercept requests
 const env = {
