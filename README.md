@@ -28,6 +28,9 @@ AI Gateway Pro is a **desktop application** that acts as a unified local gateway
 | **Dashboard** | Real-time dashboard showing providers, keys, requests, latency, costs, and health status. |
 | **Notifications** | Desktop, Email, Slack, Discord, Telegram, and Webhook notifications for critical events. |
 | **Configuration Profiles** | Development, Production, and Testing profiles with JSON import/export and backups. |
+| **Setup Wizard** | Guided setup on first launch to configure AI providers and coding agents step-by-step. |
+| **Agent Configuration Wiring** | Automated adapters to backup and wire configuration config files for Claude Code, Aider, Continue, Cline, Roo Code, Goose, Qodo, and custom agents. |
+| **CLI Interceptors** | Run global proxy commands `air-claude`, `air-opencode` or `air-server` to automatically route requests through local key rotation. |
 
 ---
 
@@ -221,7 +224,7 @@ Full interactive documentation is available at `/docs` (Swagger UI) and `/redoc`
 | 12 | Desktop Integration | ✅ Complete |
 | 13 | Packaging & Distribution | ✅ Complete |
 | 14 | Testing | ✅ Complete |
-| 15 | Documentation | 🚧 In Progress |
+| 15 | Documentation | ✅ Complete |
 
 See `phase.md` for detailed task breakdowns within each phase.
 
