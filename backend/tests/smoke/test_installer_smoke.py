@@ -7,7 +7,9 @@ import httpx
 def test_executable_smoke() -> None:
     """Verifies that the compiled PyInstaller executable starts up, responds on /health, and shuts down cleanly."""
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    exe_path = os.path.join(root, "backend", "dist", "aigateway.exe")
+    exe_path = os.path.join(root, "dist", "aigateway.exe")
+    if not os.path.exists(exe_path):
+        exe_path = os.path.join(root, "backend", "dist", "aigateway.exe")
 
     if not os.path.exists(exe_path):
         pytest.skip(f"Smoke test skipped: compiled binary not found at {exe_path}")
