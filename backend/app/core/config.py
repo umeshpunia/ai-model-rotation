@@ -1,4 +1,4 @@
-﻿"""Application settings sourced from environment variables or `.env` file."""
+"""Application settings sourced from environment variables or `.env` file."""
 from __future__ import annotations
 from functools import lru_cache
 from typing import Any, Literal
@@ -148,6 +148,7 @@ class ProviderSettings(_Base):
     provider_timeout_seconds: int = 120
     provider_max_retries: int = 3
     provider_retry_backoff_seconds: float = 2.0
+    provider_cooldown_seconds: int = 60
 
 
 class NotificationSettings(_Base):

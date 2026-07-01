@@ -143,10 +143,24 @@ class GatewayService:
                 {"api_key_id": key.id, "provider_id": key.provider_id}
             )
         elif status_code == 429:
-            # Rate limit -> put key on cooldown for 60 seconds
+            # Rate limit -> put key on cooldown dynamically
+            from app.repositories.setting_repository import SettingRepository
+            setting_repo = SettingRepository(self.session)
+            cooldown_setting = setting_repo.get_by_key("provider_cooldown_seconds")
+            
+            cooldown_seconds = 60
+            if cooldown_setting and cooldown_setting.value:
+                try:
+                    cooldown_seconds = int(cooldown_setting.value)
+                except ValueError:
+                    pass
+            else:
+                from app.core.config import get_settings
+                cooldown_seconds = get_settings().provider.provider_cooldown_seconds
+
             key.status = KeyStatus.COOLDOWN
             key.health_status = HealthStatus.DEGRADED
-            key.cooldown_until = datetime.now(timezone.utc) + timedelta(seconds=60)
+            key.cooldown_until = datetime.now(timezone.utc) + timedelta(seconds=cooldown_seconds)
             
             get_notification_dispatcher().notify(
                 self.session,
@@ -206,6 +220,14 @@ class GatewayService:
             )
             raise ProviderUnavailableError("No usable providers or API keys available for this model.")
 
+        # Estimate prompt tokens from input messages
+        from app.utils.token_estimator import estimate_tokens
+        
+        prompt_text = ""
+        for msg in request.messages:
+            prompt_text += msg.content + "\n"
+        prompt_tokens = estimate_tokens(prompt_text)
+
         for provider, key, model_info in candidates:
             start_time = time.perf_counter()
             try:
@@ -226,11 +248,49 @@ class GatewayService:
                 self.session.add(key)
                 self.session.flush()
 
+                # Keep track of generated content for token/cost estimation
+                generated_text = ""
                 async for chunk in stream_generator:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        generated_text += chunk.choices[0].delta.content
                     yield chunk
 
                 latency_ms = (time.perf_counter() - start_time) * 1000.0
-                self._log_request(provider.id, key.id, request.model, True, 200, latency_ms, cost=0.0)
+                completion_tokens = estimate_tokens(generated_text)
+                total_tokens = prompt_tokens + completion_tokens
+                
+                prompt_cost = (prompt_tokens / 1000.0) * model_info.input_cost_per_1k
+                comp_cost = (completion_tokens / 1000.0) * model_info.output_cost_per_1k
+                total_cost = prompt_cost + comp_cost
+                
+                key.total_tokens += total_tokens
+                key.total_cost += total_cost
+                if key.avg_latency_ms is None:
+                    key.avg_latency_ms = latency_ms
+                else:
+                    key.avg_latency_ms = (key.avg_latency_ms * 0.9) + (latency_ms * 0.1)
+                
+                self.session.add(key)
+                self.session.flush()
+
+                # Log stream completed request with estimated tokens & costs
+                log = RequestLog(
+                    provider_id=provider.id,
+                    api_key_id=key.id,
+                    model=request.model,
+                    task_type="general",
+                    endpoint="/v1/chat/completions",
+                    method="POST",
+                    success=True,
+                    status_code=200,
+                    latency_ms=latency_ms,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=total_tokens,
+                    cost=total_cost
+                )
+                self.session.add(log)
+                self.session.flush()
                 return
                 
             except UpstreamError as err:

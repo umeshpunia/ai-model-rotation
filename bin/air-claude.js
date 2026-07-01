@@ -1,12 +1,47 @@
 #!/usr/bin/env node
 import { spawn } from "child_process";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-console.log("Launching Claude Code via AI Gateway Pro (air-claude)...");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function getGatewayUrl() {
+  const envPath = path.resolve(__dirname, "../backend/.env");
+  let host = "127.0.0.1";
+  let port = "8080";
+  let prefix = "/v1";
+
+  if (fs.existsSync(envPath)) {
+    try {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      const lines = envContent.split(/\r?\n/);
+      for (const line of lines) {
+        const cleanLine = line.trim();
+        if (!cleanLine || cleanLine.startsWith("#")) continue;
+        const index = cleanLine.indexOf("=");
+        if (index > 0) {
+          const key = cleanLine.substring(0, index).trim();
+          const val = cleanLine.substring(index + 1).trim();
+          if (key === "HOST") host = val;
+          if (key === "PORT") port = val;
+          if (key === "GATEWAY_PREFIX") prefix = val;
+        }
+      }
+    } catch (e) {
+      // Fallback to defaults
+    }
+  }
+  return `http://${host}:${port}${prefix}`;
+}
+
+const gatewayUrl = getGatewayUrl();
+console.log(`Launching Claude Code via AI Gateway Pro (air-claude)... (Routing requests to: ${gatewayUrl})`);
 
 // Setup the Anthropic base URL and credentials variables to intercept requests
 const env = {
   ...process.env,
-  ANTHROPIC_BASE_URL: "http://localhost:8080/v1",
+  ANTHROPIC_BASE_URL: gatewayUrl,
   ANTHROPIC_API_KEY: "sk-ant-aigateway-pro-rotation-key"
 };
 
