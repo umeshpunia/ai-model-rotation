@@ -42,8 +42,15 @@ def status_overview(session: Session = Depends(get_db)) -> dict[str, Any]:
         cooldown_keys = sum(1 for k in keys if k.status == KeyStatus.COOLDOWN)
         invalid_keys = sum(1 for k in keys if k.status == KeyStatus.INVALID)
         
+        # Check setup_wizard_completed settings value
+        from app.repositories.setting_repository import SettingRepository
+        setting_repo = SettingRepository(session)
+        wizard_setting = setting_repo.get_by_key("setup_wizard_completed")
+        setup_wizard_completed = wizard_setting.value == "true" if wizard_setting else False
+        
         return {
             "status": "online",
+            "setup_wizard_completed": setup_wizard_completed,
             "providers": {
                 "total": total_providers,
                 "enabled": enabled_providers,

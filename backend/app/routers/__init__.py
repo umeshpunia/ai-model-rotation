@@ -10,6 +10,7 @@ from app.routers.logs import router as logs_router
 from app.routers.notifications import router as notifications_router
 from app.routers.backups import router as backups_router
 from app.routers.gateway import router as gateway_router_impl
+from app.routers.agents import router as agents_router
 
 # Admin & Management API router (v1)
 api_router = APIRouter()
@@ -23,6 +24,7 @@ api_router.include_router(statistics_router, prefix="/statistics", tags=["statis
 api_router.include_router(logs_router, prefix="/logs", tags=["logs"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(backups_router, prefix="/backups", tags=["backups"])
+api_router.include_router(agents_router, prefix="/agents", tags=["agents"])
 
 # Completions Proxy Gateway Router (v1)
 gateway_router = APIRouter()

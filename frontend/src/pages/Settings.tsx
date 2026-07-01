@@ -1,11 +1,13 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
-import { RefreshCw, Download, Upload, Trash2, ArrowUpCircle } from "lucide-react";
+import { RefreshCw, Download, Upload, Trash2, ArrowUpCircle, Wrench } from "lucide-react";
 import { notifySuccess, notifyError, confirmAction } from "../utils/alerts";
 
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState("default");
   
   // Settings Import State
@@ -406,6 +408,33 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Setup Wizard Rerun Card */}
+          <div className="p-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  Configuration Setup Wizard
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Re-run the Setup Wizard to dynamically discover installed coding agents, select AI providers, and wire configurations automatically.
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-violet-600/10 text-violet-600 flex items-center justify-center">
+                <Wrench className="w-5 h-5" />
+              </div>
+            </div>
+            
+            <div className="pt-2">
+              <button
+                onClick={() => navigate("/wizard")}
+                className="flex items-center space-x-1.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-violet-500/10 transition-colors"
+              >
+                <span>Launch Configuration Wizard</span>
+              </button>
+            </div>
+          </div>
+
         </div>
 
       </div>
